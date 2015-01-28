@@ -10,8 +10,8 @@ int main()
 {
     //cout << "Hello world!" << endl;
 
-    cv::Mat prev = cv::imread("/home/xubuntu/Downloads/flow/rubic/rubic.0.bmp");
-    cv::Mat cur = cv::imread("/home/xubuntu/Downloads/flow/rubic/rubic.1.bmp");
+		cv::Mat prev = cv::imread("/home/xubuntu/Downloads/flow/rubic/rubic.1.bmp");
+		cv::Mat cur = cv::imread("/home/xubuntu/Downloads/flow/rubic/rubic.2.bmp");
 
 
 //    cout<<prev.rows<<endl;
@@ -26,12 +26,10 @@ int main()
     cv::Mat vx(prev.rows,prev.cols,CV_32FC1);
     cv::Mat vy(prev.rows,prev.cols,CV_32FC1);
 
+		cout<<"vx step="<<vx.step1()<<endl;
+
 //    //cv::Mat vy(imgSize.width,imgSize.height,CV_32FC1);
 
-
-
-    cv::Size winSize(3,3);
-    cv::Size imgSize(prevGray.cols,prevGray.rows);
 
 //    cout<<vx.rows<<endl;
 //    cout<<vx.cols<<endl;
@@ -39,33 +37,79 @@ int main()
 
 
 
-    OpticalFlowComputing* ofc = new OpticalFlowComputing(cv::Size(5,5), cv::Size(prevGray.cols,prevGray.rows),prevGray.step1());
+		OpticalFlowComputing* ofc = new OpticalFlowComputing(cv::Size(5,5), cv::Size(prevGray.cols,prevGray.rows),prevGray.step1());
     ofc->SetInputTwoImages(prevGray.ptr<unsigned char>(), curGray.ptr<unsigned char>());
     ofc->CalFirstLine();
     ofc->DoWork(vx.ptr<float>(),vy.ptr<float>(),vx.step1());
 
+
+
+
+
+//		mag.convertTo(mag,-1,1.0/mag_max);
+
+
+////		//vector<cv::Mat> channels;
+//		cv::Mat channels[3];
+
+//		channels[0] = ang;
+////		//channels[0].convertTo(channels[0],-1,
+//////		//channels.push_back(cv::Mat::ones(ang.size(),CV_32FC1));
+//		channels[1] = cv::Mat::ones(ang.size(),CV_32FC1);
+////		channels[1].convertTo(channels[1],-1,255.0);
+////		cout<<channels[1].at<float>(0,1)<<endl;
+//		channels[2] = mag;
+
+////		for(int row = 0;row<mag.rows;++row)
+////		{
+////			for(int col = 0;col<mag.cols;++col)
+////			{
+////				float val = mag.at<float>(row,col)/mag_max*4;
+////				channels[2].at<float>(row,col) = val>255?255:val;
+////			}
+////		}
+
+//////		channels[2] = mag;
+
+
+
+//		cv::Mat hsv;
+//		cv::merge(channels,3,hsv);
+
+//		cv::Mat bgr32F;
+//		cv::cvtColor(hsv,bgr32F,cv::COLOR_HSV2BGR);
+
+////		//cout<<is32F<<endl;
+		cv::Mat output;
+
+
+		//bgr32F.convertTo(output,CV_8UC3);
+		Flow2RGB(vx,vy,output);
+		cv::imwrite("/home/xubuntu/Project/output.png",output);
+
+
     //cv::Mat output;
     //resize(gray, tmp, gray.size() * mult, 0, 0, INTER_NEAREST);
     //cv::resize(prev,output,prev.size()*8,0,0,cv::INTER_NEAREST);
-    SaveOF(vx,vy,prev);
+		SaveOF(vx,vy,prev);
 
-    cv::imwrite("/home/xubuntu/Project/of.png",prev);
+		cv::imwrite("/home/xubuntu/Project/of.png",prev);
 
 
 
 
     delete ofc;
 
-//    std::ofstream fs("/home/xubuntu/Project/output.dat");
-//    if(fs.is_open())
-//    {
-//        for(int l = 0;l<vx.rows;++l)
-//            for(int m = 0;m<vx.cols;++m)
-//            {
-//                fs << vx.at<float>(m,l)<<";"<<vy.at<float>(m,l)<<endl;
-//            }
+//		std::ofstream fs("/home/xubuntu/Project/output.dat");
+//		if(fs.is_open())
+//		{
+//				for(int l = 0;l<vx.rows;++l)
+//						for(int m = 0;m<vx.cols;++m)
+//						{
+//								fs << mag.at<float>(m,l)<<";"<<ang.at<float>(m,l)<<endl;
+//						}
 
-//    }
+//		}
 
 //    fs.close();
 
