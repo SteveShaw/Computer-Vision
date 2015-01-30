@@ -1,16 +1,22 @@
 #include "OpticalFlow.h"
 #include <iostream>
+
 using namespace std;
 
 
 
-OpticalFlowComputing::OpticalFlowComputing(cv::Size win, cv::Size img, int step)
-	:m_step(step)
+OpticalFlowComputing::OpticalFlowComputing(cv::Size win, cv::Size img, int step, bool use_gauss)
+	:m_win_size(win)
+	,m_img_size(img)
+	,m_step(step)
+	,m_UseGauss(use_gauss)
 {
 
-	m_img_size = img;
-	m_win_size = win;
+	//m_img_size = img;
+	//m_win_size = win;
 
+	m_GaussX.resize(16);
+	m_GaussY.resize(16);
 
 	m_GaussX[0] = 1;
 	m_GaussY[0] = 1;
@@ -31,6 +37,12 @@ OpticalFlowComputing::OpticalFlowComputing(cv::Size win, cv::Size img, int step)
 			m_GaussY[j] += m_GaussY[j - 1];
 		}
 	}
+
+	m_WeightX.resize(16);
+	m_WeightY.resize(16);
+
+	m_WeightX.assign(16,1.0f);
+	m_WeightY.assign(16,1.0f);
 
 
 	//
@@ -222,6 +234,10 @@ void OpticalFlowComputing::CalcHorConvolution(int &cur_addr)
 	/* process first HorRadius pixels */
 
 	float *kx = &m_GaussX[m_hor_rad];
+	if(!m_UseGauss)
+	{
+		kx = &m_WeightX[m_hor_rad];
+	}
 
 	for(int j = 0; j < m_hor_rad; j++ )
 	{
@@ -306,6 +322,10 @@ void OpticalFlowComputing::SolveLinEq(float *vx, float *vy, int cur_line)
 	//Solve Linear Equation
 
 	float *ky = &m_GaussY[m_ver_rad];
+	if(!m_UseGauss)
+	{
+		ky = &m_WeightY[m_ver_rad];
+	}
 
 	int USpace;
 	int BSpace;

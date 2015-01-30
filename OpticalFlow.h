@@ -4,31 +4,13 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <vector>
+#include "common.h"
 
-#define CONV( A, B, C)  ((float)( A +  (B<<1)  + C ))
 
-struct DerProduct
-{
-    float xx;
-    float xy;
-    float yy;
-    float xt;
-    float yt;
-};
 
-struct HorStep
-{
-	int left;
-	int mid;
-	int right;
-};
 
-struct VerStep
-{
-	int up;
-	int mid;
-	int down;
-};
+
+
 
 static const float MinThr = 2.5f;
 
@@ -48,8 +30,15 @@ class OpticalFlowComputing
     cv::Size m_img_size;
 
     /* Gaussian separable kernels */
-    float m_GaussX[16];
-    float m_GaussY[16];
+//    float m_GaussX[16];
+//    float m_GaussY[16];
+
+		std::vector<float> m_WeightX;
+		std::vector<float> m_WeightY;
+
+		std::vector<float> m_GaussX;
+		std::vector<float> m_GaussY;
+
 
 
     float* m_MemX[2];
@@ -68,9 +57,12 @@ class OpticalFlowComputing
     unsigned char* m_ptrA;
     unsigned char* m_ptrB;
 
+		bool m_UseGauss; //Decide whether the weighting function is Gaussian based weights.
+
+
 
 public:
-    OpticalFlowComputing(cv::Size win, cv::Size img, int step);
+		OpticalFlowComputing(cv::Size win, cv::Size img, int step, bool use_gauss);
 
     void CalFirstLine();
 

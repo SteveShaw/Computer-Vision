@@ -4,7 +4,8 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += main.cpp \
-    OpticalFlow.cpp
+    OpticalFlow.cpp \
+    opticalflowhs.cpp
 
 include(deployment.pri)
 qtcAddDeployment()
@@ -12,7 +13,9 @@ qtcAddDeployment()
 
 
 HEADERS += \
-    OpticalFlow.h
+    OpticalFlow.h \
+    opticalflowhs.h \
+    common.h
 
 
 LIBS += -L/usr/local/lib/ -lopencv_core -lopencv_highgui -lopencv_imgproc

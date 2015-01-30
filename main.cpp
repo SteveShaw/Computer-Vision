@@ -37,7 +37,7 @@ int main()
 
 
 
-		OpticalFlowComputing* ofc = new OpticalFlowComputing(cv::Size(5,5), cv::Size(prevGray.cols,prevGray.rows),prevGray.step1());
+		OpticalFlowComputing* ofc = new OpticalFlowComputing(cv::Size(5,5), cv::Size(prevGray.cols,prevGray.rows),prevGray.step1(),false);
     ofc->SetInputTwoImages(prevGray.ptr<unsigned char>(), curGray.ptr<unsigned char>());
     ofc->CalFirstLine();
     ofc->DoWork(vx.ptr<float>(),vy.ptr<float>(),vx.step1());
