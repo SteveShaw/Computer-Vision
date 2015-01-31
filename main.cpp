@@ -2,16 +2,65 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "OpticalFlow.h"
+#include "opticalflowhs.h"
 #include <fstream>
+#include <string>
+#include <cstring>
+
+//#include <QDir>
+//#include <QDebug>
 
 using namespace std;
 
+static const int mult = 16;
+
+void copnvert2flow(const cv::Mat& velx, const cv::Mat& vely, cv::Mat& flow)
+{
+		//cv::Mat flow(velx.size(), CV_32FC2);
+		for(int y = 0 ; y < flow.rows; ++y)
+				for(int x = 0 ; x < flow.cols; ++x)
+						flow.at<cv::Point2f>(y, x) = cv::Point2f(velx.at<float>(y, x), vely.at<float>(y, x));
+}
+
+void SaveFlow(const cv::Mat& flow, cv::Mat &cflow)
+{
+	const float m2 = 0.3f;
+	const float minVel = 0.1f;
+
+	for(int y = 0; y < flow.rows; ++y)
+			for(int x = 0; x < flow.cols; ++x)
+			{
+					cv::Point2f f = flow.at<cv::Point2f>(y, x);
+
+					if (f.x * f.x + f.y * f.y > minVel * minVel)
+					{
+							cv::Point p1 = cv::Point(x, y) * mult;
+							cv::Point p2 = cv::Point(cvRound((x + f.x*m2) * mult), cvRound((y + f.y*m2) * mult));
+
+							cv::line(cflow, p1, p2, CV_RGB(0, 255, 0));
+							cv::circle(cflow, cv::Point(x, y) * mult, 2, CV_RGB(255, 0, 0));
+					}
+			}
+
+//	return cflow;
+}
+
+
+
 int main()
 {
+	//cv::Size szImg(256,240);
+	cv::Size szImg(200,200);
+	cout<<szImg.width<<endl;
+	cout<<szImg.height<<endl;
+	getchar();
     //cout << "Hello world!" << endl;
 
-		cv::Mat prev = cv::imread("/home/xubuntu/Downloads/flow/rubic/rubic.1.bmp");
-		cv::Mat cur = cv::imread("/home/xubuntu/Downloads/flow/rubic/rubic.2.bmp");
+		cv::Mat flow(szImg,CV_32FC2);
+
+
+		cv::Mat colorFlow(szImg.height*mult, szImg.width*mult, CV_8UC3);
+
 
 
 //    cout<<prev.rows<<endl;
@@ -19,12 +68,11 @@ int main()
 
 
 
-    cv::Mat prevGray, curGray;
-    cv::cvtColor(prev,prevGray,CV_BGR2GRAY);
-    cv::cvtColor(cur,curGray,CV_BGR2GRAY);
+		cv::Mat vx(szImg.height,szImg.width,CV_32FC1);
+		cv::Mat vy(szImg.height,szImg.width,CV_32FC1);
 
-    cv::Mat vx(prev.rows,prev.cols,CV_32FC1);
-    cv::Mat vy(prev.rows,prev.cols,CV_32FC1);
+		cv::Mat prevGray(szImg.height,szImg.width,CV_8UC1);
+		cv::Mat curGray(szImg.height,szImg.width,CV_8UC1);
 
 		cout<<"vx step="<<vx.step1()<<endl;
 
@@ -34,103 +82,120 @@ int main()
 //    cout<<vx.rows<<endl;
 //    cout<<vx.cols<<endl;
 
+		bool UseHS = false;
+
+		string dir = "/home/xubuntu/Downloads/flow/sphere";
+		int count = 20;
+		char fileName[32];
+
+
+		if(!UseHS)
+		{
+			std::cout<<"Using LK Method"<<endl;
+			getchar();
+			OpticalFlowComputing* ofc = new OpticalFlowComputing(cv::Size(5,5), cv::Size(prevGray.cols,prevGray.rows),prevGray.step1(),false);
+
+			int i = 0;
+			while(i<count-1)
+			{
+				//ofc->InitializeVelocityVectors(vx.ptr<float>(),vy.ptr<float>(),vx.step1());
+
+				string prevPath = dir+"/";
+				sprintf(fileName,"sphere.%d.bmp",i);
+				prevPath += fileName;
+
+				string curPath = dir+"/";
+				sprintf(fileName,"sphere.%d.bmp",i+1);
+				curPath += fileName;
+
+				cout<<"Process "<<prevPath<<" and "<<curPath<<endl;
+
+				cv::Mat prevImage = cv::imread(prevPath.c_str());
+				cv::Mat curImage = cv::imread(curPath.c_str());
+
+				cv::cvtColor(prevImage,prevGray,CV_BGR2GRAY);
+				cv::cvtColor(curImage,curGray,CV_BGR2GRAY);
+
+
+				ofc->SetInputTwoImages(prevGray.ptr<unsigned char>(), curGray.ptr<unsigned char>());
+				ofc->CalFirstLine();
+				ofc->DoWork(vx.ptr<float>(),vy.ptr<float>(),vx.step1());
+
+
+				copnvert2flow(vx,vy,flow);
+	//			//cv::Mat colorFlow = SaveFlow(prevGray,flow);
+				colorFlow.setTo(cv::Scalar(0,0,0));
+				SaveFlow(flow,colorFlow);
+
+				string savePath = dir+"/";
+				sprintf(fileName,"LKResult_sphere_%dvs%d.png",i+1,i);
+				savePath += fileName;
+
+
+	//			QString saveFile = savePrefix.append(QString("%1_%2.png").arg(i).arg(i+1));
+				cv::imwrite(savePath.c_str(),colorFlow);
+
+				++i;
+
+			}
+
+			delete ofc;
+		}
+
+		else
+		{
+			std::cout<<"Using HS Method"<<endl;
+			getchar();
+			OpticalFlowHS* ofc = new OpticalFlowHS(szImg,false,0.5,prevGray.step1());
+			ofc->SetIterTerm(true,200,0.0);
 
 
 
-		OpticalFlowComputing* ofc = new OpticalFlowComputing(cv::Size(5,5), cv::Size(prevGray.cols,prevGray.rows),prevGray.step1(),false);
-    ofc->SetInputTwoImages(prevGray.ptr<unsigned char>(), curGray.ptr<unsigned char>());
-    ofc->CalFirstLine();
-    ofc->DoWork(vx.ptr<float>(),vy.ptr<float>(),vx.step1());
+			int i = 0;
+			while(i<count-1)
+			{
+				ofc->InitializeVelocityVectors(vx.ptr<float>(),vy.ptr<float>(),vx.step1());
+
+				string prevPath = dir+"/";
+				sprintf(fileName,"sphere.%d.bmp",i);
+				prevPath += fileName;
+
+				string curPath = dir+"/";
+				sprintf(fileName,"sphere.%d.bmp",i+1);
+				curPath += fileName;
+
+				cout<<"Process "<<prevPath<<" and "<<curPath<<endl;
+
+				cv::Mat prevImage = cv::imread(prevPath.c_str());
+				cv::Mat curImage = cv::imread(curPath.c_str());
+
+				cv::cvtColor(prevImage,prevGray,CV_BGR2GRAY);
+				cv::cvtColor(curImage,curGray,CV_BGR2GRAY);
 
 
+				ofc->SetInputTwoImages(prevGray.ptr<unsigned char>(), curGray.ptr<unsigned char>());
+				ofc->CalcFirstLineSobel();
+				ofc->CalcSobel(vx.ptr<float>(),vy.ptr<float>(),vx.step1());
+
+				copnvert2flow(vx,vy,flow);
+	//			//cv::Mat colorFlow = SaveFlow(prevGray,flow);
+				colorFlow.setTo(cv::Scalar(0,0,0));
+				SaveFlow(flow,colorFlow);
+
+				string savePath = dir+"/";
+				sprintf(fileName,"HSResult_sphere_%dvs%d.png",i+1,i);
+				savePath += fileName;
 
 
+	//			QString saveFile = savePrefix.append(QString("%1_%2.png").arg(i).arg(i+1));
+				cv::imwrite(savePath.c_str(),colorFlow);
 
-//		mag.convertTo(mag,-1,1.0/mag_max);
+				++i;
 
+			}
 
-////		//vector<cv::Mat> channels;
-//		cv::Mat channels[3];
-
-//		channels[0] = ang;
-////		//channels[0].convertTo(channels[0],-1,
-//////		//channels.push_back(cv::Mat::ones(ang.size(),CV_32FC1));
-//		channels[1] = cv::Mat::ones(ang.size(),CV_32FC1);
-////		channels[1].convertTo(channels[1],-1,255.0);
-////		cout<<channels[1].at<float>(0,1)<<endl;
-//		channels[2] = mag;
-
-////		for(int row = 0;row<mag.rows;++row)
-////		{
-////			for(int col = 0;col<mag.cols;++col)
-////			{
-////				float val = mag.at<float>(row,col)/mag_max*4;
-////				channels[2].at<float>(row,col) = val>255?255:val;
-////			}
-////		}
-
-//////		channels[2] = mag;
-
-
-
-//		cv::Mat hsv;
-//		cv::merge(channels,3,hsv);
-
-//		cv::Mat bgr32F;
-//		cv::cvtColor(hsv,bgr32F,cv::COLOR_HSV2BGR);
-
-////		//cout<<is32F<<endl;
-		cv::Mat output;
-
-
-		//bgr32F.convertTo(output,CV_8UC3);
-		Flow2RGB(vx,vy,output);
-		cv::imwrite("/home/xubuntu/Project/output.png",output);
-
-
-    //cv::Mat output;
-    //resize(gray, tmp, gray.size() * mult, 0, 0, INTER_NEAREST);
-    //cv::resize(prev,output,prev.size()*8,0,0,cv::INTER_NEAREST);
-		SaveOF(vx,vy,prev);
-
-		cv::imwrite("/home/xubuntu/Project/of.png",prev);
-
-
-
-
-    delete ofc;
-
-//		std::ofstream fs("/home/xubuntu/Project/output.dat");
-//		if(fs.is_open())
-//		{
-//				for(int l = 0;l<vx.rows;++l)
-//						for(int m = 0;m<vx.cols;++m)
-//						{
-//								fs << mag.at<float>(m,l)<<";"<<ang.at<float>(m,l)<<endl;
-//						}
-
-//		}
-
-//    fs.close();
-
-
-
-    //ofc->DoWork();
-
-
-//    cv::Mat dest(4,8,CV_32FC1,cv::Scalar(0));
-
-//    dest.at<float>(1,5) = 15.0f;
-//    dest.at<float>(0,5) = 10.0f;
-
-//    cout<<"Step="<<dest.step1(0)<<endl;
-
-//    float* data = dest.ptr<float>();
-
-
-//    cout<<data[5]<<endl;
-//    cout<<data[1*dest.step1(0)+5]<<endl;
-
+			delete ofc;
+		}
 
 
 
